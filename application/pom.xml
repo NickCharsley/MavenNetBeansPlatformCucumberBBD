@@ -30,7 +30,6 @@
             <artifactId>MavenNetBeansPlatformCucumberBDD-branding</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- NbModuleSuite functional in RELEASE70 or later: -->
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-nbjunit</artifactId>
@@ -43,6 +42,20 @@
             <version>${netbeans.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- Does this kill us -->        
+        <dependency>
+            <groupId>info.cukes</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <version>1.0.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>info.cukes</groupId>
+            <artifactId>cucumber-junit</artifactId>
+            <version>1.0.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- -->
     </dependencies>
     <build>
         <plugins>
