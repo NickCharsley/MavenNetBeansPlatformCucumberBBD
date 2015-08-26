@@ -9,5 +9,3 @@ When I click the "Help|About" menu
 Then the "About" Dialogue is displayed
 When I can click the "About" close button
 Then the "About" Dialogue is hidden    
-
-   

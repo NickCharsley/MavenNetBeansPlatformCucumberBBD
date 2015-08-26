@@ -1,6 +1,6 @@
 package com.ons.mavennetbeansplatformcucumberbdd;
 
-import java.util.logging.Level;
+//import java.util.logging.Level;
 import junit.framework.Test;
 import org.netbeans.jellytools.NbDialogOperator;
 import org.netbeans.jellytools.actions.ActionNoBlock;

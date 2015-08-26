@@ -5,8 +5,8 @@
  */
 package com.ons.mavennetbeansplatformcucumberbdd;
 
-import cucumber.junit.Cucumber;
-import cucumber.junit.Cucumber.*;
+import cucumber.api.junit.Cucumber;
+import cucumber.api.junit.Cucumber.Options;
 import org.junit.runner.RunWith;
 
 /**
@@ -19,5 +19,4 @@ import org.junit.runner.RunWith;
        ,glue="com.ons.mavennetbeansplatformcucumberbdd.steps"
        ,monochrome = true
 )
-public class TestRunner {    
-}
+public class TestRunner {}
