@@ -8,14 +8,17 @@ package com.ons.mavennetbeansplatformcucumberbdd.steps;
 import cucumber.api.java.en.*;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
-import org.netbeans.jellytools.JellyTestCase;
+import org.netbeans.jellytools.NbDialogOperator;
+import org.netbeans.jellytools.actions.ActionNoBlock;
+//import org.netbeans.jellytools.JellyTestCase;
+//import org.netbeans.jellytools.actions.ActionNoBlock;
 
 /**
  *
  * @author nick
  */
 public class About {
-
+    private boolean doMe=false;
     
     @When("^I have a Show Manager Application$")
     public void haveAShowManagerApplication() {
@@ -27,7 +30,7 @@ public class About {
     @When("^I click the \"([^\"]*)\" menu$")
     public void clickTheMenu(String menu) {
         // Express the Regexp above with the code you wish you had
-  //      new ActionNoBlock("Help|About", null).performMenu();
+        if (doMe) new ActionNoBlock(menu, null).performMenu();
     }
 
     @Then("^the \"([^\"]*)\" Dialogue is displayed$")
@@ -40,7 +43,7 @@ public class About {
     public void clickTheCloseButton(String dialogue) {
         // Express the Regexp above with the code you wish you had
         //throw new PendingException();
-//        new NbDialogOperator("About").closeByButton();
+        if (doMe) new NbDialogOperator("About").closeByButton();
     }
 
     @Then("^the \"([^\"]*)\" Dialogue is hidden$")

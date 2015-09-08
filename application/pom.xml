@@ -42,7 +42,7 @@
             <version>${netbeans.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- v1.1.2 kills us -->        
+        <!-- v1.1.2 kills us as it uses jUnit 4.11 and NbUnit stops working -->        
         <dependency>
             <groupId>info.cukes</groupId>
             <artifactId>cucumber-java</artifactId>
@@ -55,7 +55,6 @@
             <version>1.1.1</version>
             <scope>test</scope>
         </dependency>
-        <!-- -->
     </dependencies>
     <build>
         <plugins>
