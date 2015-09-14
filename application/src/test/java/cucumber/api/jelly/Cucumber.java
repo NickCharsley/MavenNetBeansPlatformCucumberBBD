@@ -11,16 +11,20 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,6 +39,7 @@ import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
@@ -44,7 +49,6 @@ import java.util.regex.Pattern;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import junit.framework.Assert;
-import junit.framework.Protectable;
 import junit.framework.Test;
 import junit.framework.TestFailure;
 import junit.framework.TestResult;
@@ -59,6 +63,7 @@ import org.netbeans.junit.NbTestSuite;
 import org.netbeans.junit.internal.NbModuleLogHandler;
 import org.openide.util.Exceptions;
 import static org.openide.util.Utilities.toURI;
+import sun.net.www.protocol.file.FileURLConnection;
 
 
 //May Want to extend a lower class to stop Cucumber Starting twice
@@ -74,6 +79,7 @@ public class Cucumber extends ParentRunner<Runner> {
     public Cucumber(Class clazz) throws InitializationError, IOException {
         super(clazz);
         runner=new Cucumber.JellyRunner(clazz);
+        System.out.println(clazz.getPackage().toString());
     }
 
     @Override
@@ -146,7 +152,7 @@ public class Cucumber extends ParentRunner<Runner> {
         boolean monochrome() default false;
 
         /**
-         * Specify a patternfilter for features or scenarios
+         * Specify a pattern filter for features or scenarios
          *
          * @return a list of patterns
          */
@@ -334,7 +340,7 @@ public class Cucumber extends ParentRunner<Runner> {
  
     static class JellyOptions {
         private final Cucumber.Jelly jellyOptions;
-        private final Cucumber.Options cucumberOptions;
+        private final cucumber.api.junit.Cucumber.Options cucumberOptions;
         private final ClassLoader parentClassLoader;
         private final List<Cucumber.Item> tests;
         private final Class<?> clazz;
@@ -344,16 +350,168 @@ public class Cucumber extends ParentRunner<Runner> {
             cucumberOptions=getCucumberOptions(clazz);
             tests = new ArrayList<>(0);
             parentClassLoader= ClassLoader.getSystemClassLoader().getParent();
+            
+            
+            for (String gluePath: cucumberOptions.glue())
+            {
+                try {
+                    for (Class<?> glueClass:getClassesForPackage(gluePath)){
+                        tests.add(new Cucumber.Item(true, glueClass, null));            
+                    }
+                } catch (Exception e){
+
+                }
+            }
             this.clazz=clazz;
         }
 
-        private Cucumber.Jelly  getJellyOptions(Class<?> clazz) {
+        private Cucumber.Jelly getJellyOptions(Class<?> clazz) {
             return clazz.getAnnotation(Cucumber.Jelly.class);
         }                
 
-        private Cucumber.Options getCucumberOptions(Class<?> clazz) {
-            return clazz.getAnnotation(Cucumber.Options.class);
+        private cucumber.api.junit.Cucumber.Options getCucumberOptions(Class<?> clazz) {
+            return clazz.getAnnotation(cucumber.api.junit.Cucumber.Options.class);
         }   
+
+        /**
+         * Private helper method
+         * 
+         * @param directory
+         *            The directory to start with
+         * @param pckgname
+         *            The package name to search for. Will be needed for getting the
+         *            Class object.
+         * @param classes
+         *            if a file isn't loaded but still is in the directory
+         * @throws ClassNotFoundException
+         */
+        private static void checkDirectory(File directory, String pckgname,
+                ArrayList<Class<?>> classes) throws ClassNotFoundException {
+            File tmpDirectory;
+
+            if (directory.exists() && directory.isDirectory()) {
+                final String[] files = directory.list();
+
+                for (final String file : files) {
+                    if (file.endsWith(".class")) {
+                        try {
+                            classes.add(Class.forName(pckgname + '.'
+                                    + file.substring(0, file.length() - 6)));
+                        } catch (final NoClassDefFoundError e) {
+                            // do nothing. this class hasn't been found by the
+                            // loader, and we don't care.
+                        }
+                    } else if ((tmpDirectory = new File(directory, file))
+                            .isDirectory()) {
+                        checkDirectory(tmpDirectory, pckgname + "." + file, classes);
+                    }
+                }
+            }
+        }
+
+        /**
+         * Private helper method.
+         * 
+         * @param connection
+         *            the connection to the jar
+         * @param pckgname
+         *            the package name to search for
+         * @param classes
+         *            the current ArrayList of all classes. This method will simply
+         *            add new classes.
+         * @throws ClassNotFoundException
+         *             if a file isn't loaded but still is in the jar file
+         * @throws IOException
+         *             if it can't correctly read from the jar file.
+         */
+        private static void checkJarFile(JarURLConnection connection,
+                String pckgname, ArrayList<Class<?>> classes)
+                throws ClassNotFoundException, IOException {
+            final JarFile jarFile = connection.getJarFile();
+            final Enumeration<JarEntry> entries = jarFile.entries();
+            String name;
+
+            for (JarEntry jarEntry = null; entries.hasMoreElements()
+                    && ((jarEntry = entries.nextElement()) != null);) {
+                name = jarEntry.getName();
+
+                if (name.contains(".class")) {
+                    name = name.substring(0, name.length() - 6).replace('/', '.');
+
+                    if (name.contains(pckgname)) {
+                        classes.add(Class.forName(name));
+                    }
+                }
+            }
+        }
+
+        /**
+         * Attempts to list all the classes in the specified package as determined
+         * by the context class loader
+         * 
+         * @param pckgname
+         *            the package name to search
+         * @return a list of classes that exist within that package
+         * @throws ClassNotFoundException
+         *             if something went wrong
+         */
+        private static ArrayList<Class<?>> getClassesForPackage(String pckgname)
+                throws ClassNotFoundException {
+            final ArrayList<Class<?>> classes = new ArrayList<Class<?>>();
+
+            try {
+                final ClassLoader cld = Thread.currentThread()
+                        .getContextClassLoader();
+
+                if (cld == null)
+                    throw new ClassNotFoundException("Can't get class loader.");
+
+                final Enumeration<URL> resources = cld.getResources(pckgname
+                        .replace('.', '/'));
+                URLConnection connection;
+
+                for (URL url = null; resources.hasMoreElements()
+                        && ((url = resources.nextElement()) != null);) {
+                    try {
+                        connection = url.openConnection();
+
+                        if (connection instanceof JarURLConnection) {
+                            checkJarFile((JarURLConnection) connection, pckgname,
+                                    classes);
+                        } else if (connection instanceof FileURLConnection) {
+                            try {
+                                checkDirectory(
+                                        new File(URLDecoder.decode(url.getPath(),
+                                                "UTF-8")), pckgname, classes);
+                            } catch (final UnsupportedEncodingException ex) {
+                                throw new ClassNotFoundException(
+                                        pckgname
+                                                + " does not appear to be a valid package (Unsupported encoding)",
+                                        ex);
+                            }
+                        } else
+                            throw new ClassNotFoundException(pckgname + " ("
+                                    + url.getPath()
+                                    + ") does not appear to be a valid package");
+                    } catch (final IOException ioex) {
+                        throw new ClassNotFoundException(
+                                "IOException was thrown when trying to get all resources for "
+                                        + pckgname, ioex);
+                    }
+                }
+            } catch (final NullPointerException ex) {
+                throw new ClassNotFoundException(
+                        pckgname
+                                + " does not appear to be a valid package (Null pointer exception)",
+                        ex);
+            } catch (final IOException ioex) {
+                throw new ClassNotFoundException(
+                        "IOException was thrown when trying to get all resources for "
+                                + pckgname, ioex);
+            }
+
+            return classes;
+        }        
         
         public Class<?> getCucumber(){
             return clazz;
@@ -590,6 +748,7 @@ public class Cucumber extends ParentRunner<Runner> {
                                
                 cucumber.api.junit.Cucumber toRun = new cucumber.api.junit.Cucumber(config.getCucumber());
 //                result.fireTestFinished(Description.EMPTY);
+                
                 toRun.run(result);
             } catch (ClassNotFoundException ex) {
 //                result.addError(this, ex);
@@ -775,7 +934,12 @@ public class Cucumber extends ParentRunner<Runner> {
                 if (res.startsWith("org.junit") || res.startsWith("org/junit")) {
                     return true;
                 }
+                //Obviously we now need Cucumber
                 if (res.startsWith("cucumber") || res.startsWith("cucumber")) {
+                    return true;
+                }                
+                //May need hamcrest helpers
+                if (res.startsWith("org.hamcrest") || res.startsWith("org/hamcrest")) {
                     return true;
                 }
                 if (res.startsWith("org.netbeans.junit") || res.startsWith("org/netbeans/junit")) {
@@ -1230,6 +1394,7 @@ public class Cucumber extends ParentRunner<Runner> {
 
         static void preparePatches(String path, Properties prop, Class<?>... classes) throws URISyntaxException {
             Pattern tests = Pattern.compile(".*\\" + File.separator + "([^\\" + File.separator + "]+)\\" + File.separator + "tests\\.jar");
+            System.out.println("Preparing Patches");
             StringBuilder sb = new StringBuilder();
             String sep = "";
             for (String jar : tokenizePath(path)) {
@@ -1247,10 +1412,12 @@ public class Cucumber extends ParentRunner<Runner> {
                 URL test = c.getProtectionDomain().getCodeSource().getLocation();
                 Assert.assertNotNull("URL found for " + c, test);
                 if (uniqueURLs.add(test)) {
-                    sb.append(sep).append(toFile(test.toURI()).getPath());
+                    String patchPath=toFile(test.toURI()).getPath();
+                    System.out.println("\t"+patchPath);
+                    sb.append(sep).append(patchPath);
                     sep = File.pathSeparator;
                 }
-            }
+            }            
             prop.setProperty("netbeans.systemclassloader.patches", sb.toString());
         }
         

@@ -6,7 +6,9 @@
 package com.ons.mavennetbeansplatformcucumberbdd;
 
 import cucumber.api.jelly.Cucumber;
+import cucumber.api.jelly.Cucumber.Jelly;
 import cucumber.api.jelly.Cucumber.Jelly.Level;
+import cucumber.api.junit.Cucumber.Options;
 import org.junit.runner.RunWith;
 
 /**
@@ -15,15 +17,15 @@ import org.junit.runner.RunWith;
  */
 @RunWith(Cucumber.class)
 /**/
-@Cucumber.Options(
+@Options(
         format = { "pretty", "html:target/cucumber" }
        ,glue="com.ons.mavennetbeansplatformcucumberbdd.steps"
        ,monochrome = true
 )
 /**/
-@Cucumber.Jelly(
+@Jelly(
         gui=true,
-        failOnMessage=Level.WARNING, // works at least in RELEASE71
+        failOnMessage=Level.WARNING,
         failOnException=Level.INFO,
         enableClasspathModules=true, 
         clusters=".*"

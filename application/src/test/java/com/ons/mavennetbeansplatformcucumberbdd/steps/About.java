@@ -18,7 +18,7 @@ import org.netbeans.jellytools.actions.ActionNoBlock;
  * @author nick
  */
 public class About {
-    private boolean doMe=false;
+    private final boolean doMe=true;
     
     @When("^I have a Show Manager Application$")
     public void haveAShowManagerApplication() {
@@ -29,14 +29,18 @@ public class About {
 
     @When("^I click the \"([^\"]*)\" menu$")
     public void clickTheMenu(String menu) {
-        // Express the Regexp above with the code you wish you had
         if (doMe) new ActionNoBlock(menu, null).performMenu();
     }
 
     @Then("^the \"([^\"]*)\" Dialogue is displayed$")
     public void theDialogueIsDisplayed(String dialogue) {
-        // Express the Regexp above with the code you wish you had
-        //throw new PendingException();
+        NbDialogOperator doDialogue=null;
+        try {
+            if (doMe) doDialogue=new NbDialogOperator(dialogue);
+            assertThat("The '"+dialogue+"' Dialogue is displayed",doDialogue,is(notNullValue()));
+        } catch (Exception e) {
+            assertThat("The '"+dialogue+"' Dialogue is displayed",doDialogue,is(notNullValue()));            
+        }
     }
 
     @When("^I can click the \"([^\"]*)\" close button$")
@@ -48,9 +52,13 @@ public class About {
 
     @Then("^the \"([^\"]*)\" Dialogue is hidden$")
     public void theDialogueIsHidden(String dialogue) {
-        // Express the Regexp above with the code you wish you had
-        //throw new PendingException();
-        assertThat(1,is(1));
+        NbDialogOperator doDialogue=null;
+        try {
+            if (doMe) doDialogue=new NbDialogOperator(dialogue);
+            assertThat("The '"+dialogue+"' Dialogue is hidden",doDialogue,is(nullValue()));
+        } catch (Exception e) {
+            assertThat("The '"+dialogue+"' Dialogue is hidden",doDialogue,is(nullValue()));
+        }
     }    
 
 }
