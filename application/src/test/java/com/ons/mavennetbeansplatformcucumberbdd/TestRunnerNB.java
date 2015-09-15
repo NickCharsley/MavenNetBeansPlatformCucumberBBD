@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ons.mavennetbeansplatformcucumberbdd;
 
 import cucumber.api.jelly.Cucumber;
@@ -19,7 +14,7 @@ import org.junit.runner.RunWith;
 /**/
 @Options(
         format = { "pretty", "html:target/cucumber" }
-       ,glue="com.ons.mavennetbeansplatformcucumberbdd.steps"
+       ,glue={"com.ons.mavennetbeansplatformcucumberbdd.steps","cucumber.api.jelly.glue"}
        ,monochrome = true
 )
 /**/

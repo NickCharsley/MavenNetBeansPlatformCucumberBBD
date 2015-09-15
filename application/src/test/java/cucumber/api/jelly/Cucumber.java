@@ -107,59 +107,6 @@ public class Cucumber extends ParentRunner<Runner> {
     }
 
     /**
-     * This annotation can be used to give additional hints to the real {@link Cucumber} runner
-     * about what to run. It provides similar options to the Cucumber command line used by {@link cucumber.api.cli.Main}
-     * 
-     * They are to the 
-     * 
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.TYPE})
-    public static @interface Options {
-        /**
-         * @return true if this is a dry run
-         */
-        boolean dryRun() default false;
-
-        /**
-         * @return true if strict mode is enabled (fail if there are undefined or pending steps)
-         */
-        boolean strict() default false;
-
-        /**
-         * @return the paths to the feature(s)
-         */
-        String[] features() default {};
-
-        /**
-         * @return where to look for glue code (stepdefs and hooks)
-         */
-        String[] glue() default {};
-
-        /**
-         * @return what tags in the features should be executed
-         */
-        String[] tags() default {};
-
-        /**
-         * @return what formatter(s) to use
-         */
-        String[] format() default {};
-
-        /**
-         * @return whether or not to use monochrome output
-         */
-        boolean monochrome() default false;
-
-        /**
-         * Specify a pattern filter for features or scenarios
-         *
-         * @return a list of patterns
-         */
-        String[] name() default {};
-    }
-    
-    /**
      * This annotation can be used to give additional hints to the {@link Cucumber} runner
      * about what to run.
      * 
@@ -351,6 +298,7 @@ public class Cucumber extends ParentRunner<Runner> {
             tests = new ArrayList<>(0);
             parentClassLoader= ClassLoader.getSystemClassLoader().getParent();
             
+            checkGlue();
             
             for (String gluePath: cucumberOptions.glue())
             {
@@ -373,6 +321,27 @@ public class Cucumber extends ParentRunner<Runner> {
             return clazz.getAnnotation(cucumber.api.junit.Cucumber.Options.class);
         }   
 
+        public void checkGlue(){
+            for (String gluePath: cucumberOptions.glue())
+            {
+                if (gluePath.equals("cucumber.api.jelly.glue")) {
+                    System.out.println("Cucumber Jelly Glue Present");
+                    return;
+                }
+            }            
+            
+            System.out.println("###################################");
+            System.out.println("#                                 #");
+            System.out.println("# Cucumber Jelly Glue Not Present #");
+            System.out.println("#                                 #");
+            System.out.println("# To use it add                   #");
+            System.out.println("#     cucumber.api.jelly.glue     #");
+            System.out.println("# to @Options(glue)               #");            
+            System.out.println("#                                 #");
+            System.out.println("###################################");
+
+        }
+        
         /**
          * Private helper method
          * 
@@ -750,6 +719,10 @@ public class Cucumber extends ParentRunner<Runner> {
 //                result.fireTestFinished(Description.EMPTY);
                 
                 toRun.run(result);
+                
+                //Do the 'check' again to ensure the banner will be printed near
+                //the tests
+                config.checkGlue();
             } catch (ClassNotFoundException ex) {
 //                result.addError(this, ex);
             } catch (NoClassDefFoundError ex) {
@@ -935,6 +908,10 @@ public class Cucumber extends ParentRunner<Runner> {
                     return true;
                 }
                 //Obviously we now need Cucumber
+                if (res.startsWith("cucumber.api.jelly.glue") || res.startsWith("cucumber.api.jelly.glue")) {
+                    //But we want glue explicitly included!!!
+                    return false;
+                }                                
                 if (res.startsWith("cucumber") || res.startsWith("cucumber")) {
                     return true;
                 }                
